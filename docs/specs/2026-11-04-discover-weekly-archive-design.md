@@ -158,7 +158,9 @@ and adds only what is still missing.
 
 Only one Archive run happens at a time. A launch, interval or manual trigger that fires while a run
 is active is dropped. It is not queued, and the end of the active run does not start it. The guard
-is released on every outcome.
+is released on every outcome. A run still going after `RUN_TIMEOUT` (5 min), such as one stuck on a
+Platform call that never settles, is aborted and the guard released; the wait below keeps its late
+add from being repeated (ruled 2026-11-04).
 
 After dispose, a run still in flight issues no further add or create call, writes no storage and
 shows no notice. An add request already sent when dispose runs may still complete. So that it is not

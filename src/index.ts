@@ -4,7 +4,13 @@
 // without awaiting the client, and registers its dispose with ctx.defer.
 // Every load() builds a fresh wiring; unload disposes all of it.
 import { runArchive } from "./archiveRun";
-import { ADD_BATCH_SIZE, PREVIOUS_RUN_WAIT_MS, READY_TIMEOUT_MS, RECHECK_INTERVAL_MS } from "./constants";
+import {
+  ADD_BATCH_SIZE,
+  PREVIOUS_RUN_WAIT_MS,
+  READY_TIMEOUT_MS,
+  RECHECK_INTERVAL_MS,
+  RUN_TIMEOUT_MS,
+} from "./constants";
 import { createNotices } from "./notices";
 import { createLibrary } from "./platform/library";
 import { createPlaylists } from "./platform/playlist";
@@ -66,6 +72,7 @@ export async function load(ctx: ModuleRuntimeContext): Promise<void> {
     gate: runGate,
     timer: realTimer,
     intervalMs: RECHECK_INTERVAL_MS,
+    runTimeoutMs: RUN_TIMEOUT_MS,
     log,
   });
 

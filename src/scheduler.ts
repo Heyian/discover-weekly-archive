@@ -1,5 +1,5 @@
 import type { RunGate } from "./runGate";
-import type { TimerPort } from "./types/domain";
+import type { TimerId, TimerPort } from "./types/domain";
 
 export interface Scheduler {
   /** Starts a run unless one is active; returns whether it started. */
@@ -17,11 +17,13 @@ export function createScheduler(opts: {
   gate: RunGate;
   timer: TimerPort;
   intervalMs: number;
+  /** A run still going after this is aborted and the guard released; the gate covers its late add. */
+  runTimeoutMs: number;
   log: (message: string, detail?: unknown) => void;
 }): Scheduler {
-  const { run, gate, timer, intervalMs, log } = opts;
+  const { run, gate, timer, intervalMs, runTimeoutMs, log } = opts;
   const listeners = new Set<() => void>();
-  let active: AbortController | null = null;
+  let active: { controller: AbortController; watchdog: TimerId } | null = null;
   let disposed = false;
 
   const notify = (): void => {
@@ -31,7 +33,20 @@ export function createScheduler(opts: {
   const trigger = (): boolean => {
     if (disposed || active) return false;
     const controller = new AbortController();
-    active = controller;
+    // Only the run that is still `active` releases the guard: one that timed out and settles
+    // late must not end its successor.
+    const end = (): void => {
+      if (active?.controller !== controller) return;
+      timer.clearTimeout(active.watchdog);
+      active = null;
+      notify();
+    };
+    const watchdog = timer.setTimeout(() => {
+      log("Archive run timed out; aborted", { timeoutMs: runTimeoutMs });
+      controller.abort();
+      end();
+    }, runTimeoutMs);
+    active = { controller, watchdog };
     notify();
     void gate
       .enter(controller.signal, async () => {
@@ -41,10 +56,7 @@ export function createScheduler(opts: {
           log("Archive run failed", error);
         }
       })
-      .then(() => {
-        active = null;
-        notify();
-      });
+      .then(end);
     return true;
   };
 
@@ -63,7 +75,10 @@ export function createScheduler(opts: {
       if (disposed) return;
       disposed = true;
       timer.clearInterval(interval);
-      active?.abort();
+      if (active) {
+        timer.clearTimeout(active.watchdog);
+        active.controller.abort();
+      }
       listeners.clear();
     },
   };

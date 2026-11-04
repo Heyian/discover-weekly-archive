@@ -6,6 +6,7 @@ import {
   PREVIOUS_RUN_WAIT_MS,
   READY_TIMEOUT_MS,
   RECHECK_INTERVAL_MS,
+  RUN_TIMEOUT_MS,
   STORAGE_PREFIX,
 } from "./constants";
 
@@ -23,4 +24,8 @@ it("keeps the add batch at 100, since no per-call limit was found up to 500", ()
 
 it("caps the wait for a previous load's run at 10 s", () => {
   expect(PREVIOUS_RUN_WAIT_MS).toBe(10_000);
+});
+
+it("caps one Archive run at 5 minutes", () => {
+  expect(RUN_TIMEOUT_MS).toBe(300_000);
 });

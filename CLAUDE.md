@@ -44,10 +44,10 @@ Commit subjects start with a Conventional Commit prefix (`feat:`, `fix:`, `docs:
 
 ## Architecture
 
-The core (`archiveRun`, `resolve`, `scheduler`, `runGate`, `notices`, `storage`) is pure and receives ports by
-injection. Adapters over `Spicetify.Platform` live in `src/platform/` (`library`, `playlist`);
-`src/index.ts` wires everything in `load(ctx)`, and `src/ui/` holds the Settings section and
-toasts.
+The core (`archiveRun`, `resolve`, `scheduler`, `runGate`, `notices`, `storage`) is pure and
+receives ports by injection. Adapters over `Spicetify.Platform` live in `src/platform/`
+(`library`, `playlist`); `src/index.ts` wires everything in `load(ctx)`, and `src/ui/` holds the
+Settings section and toasts.
 
 ## Non-obvious constraints
 
@@ -66,6 +66,8 @@ Load-bearing; violating any is a defect. Rationale is in the spec.
 - **Dedupe by track URI only** — never by name or artist.
 - **The run gate lives at module scope in `src/index.ts`,** not in `load()`: it must outlive
   disable → enable so a new load's first run waits (capped) for the old load's in-flight add.
+- **The only cap on Platform calls is the scheduler's run watchdog (`RUN_TIMEOUT_MS`).** Do not
+  add per-call timeouts in adapters: abandoning an add mid-flight and retrying can duplicate it.
 - **Live-verified facts the adapters rely on** (details in the platform notes):
   - The edit flag on a Rootlist item is `canAdd`, not `canEditItems` (always false there).
   - The user's own Discover Weekly is told apart by `formatListData.attributes["madeFor.username"]`.

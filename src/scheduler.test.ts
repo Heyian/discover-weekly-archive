@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { createScheduler, startLaunchRun } from "./scheduler";
-import { RECHECK_INTERVAL_MS } from "./constants";
+import { RECHECK_INTERVAL_MS, RUN_TIMEOUT_MS } from "./constants";
 import { createRunGate, type RunGate } from "./runGate";
 import { realTimer } from "./timer";
 
@@ -25,7 +25,14 @@ function deferred<T = void>() {
 
 function setup(run: (signal: AbortSignal) => Promise<unknown>, gate: RunGate = createRunGate(realTimer, SETTLE_CAP)) {
   const log = vi.fn();
-  const scheduler = createScheduler({ run, gate, timer: realTimer, intervalMs: RECHECK_INTERVAL_MS, log });
+  const scheduler = createScheduler({
+    run,
+    gate,
+    timer: realTimer,
+    intervalMs: RECHECK_INTERVAL_MS,
+    runTimeoutMs: RUN_TIMEOUT_MS,
+    log,
+  });
   return { scheduler, log };
 }
 
@@ -134,6 +141,63 @@ describe("createScheduler", () => {
     expect(vi.getTimerCount()).toBe(0);
     await vi.advanceTimersByTimeAsync(SETTLE_CAP);
     expect(run).not.toHaveBeenCalled();
+  });
+
+  it("a run that never settles is aborted at the run cap and the guard is released", async () => {
+    let seen: AbortSignal | undefined;
+    const run = vi.fn((signal: AbortSignal) => {
+      seen = signal;
+      return new Promise(() => {});
+    });
+    const { scheduler, log } = setup(run);
+    const listener = vi.fn();
+    scheduler.onChange(listener);
+
+    scheduler.trigger();
+    await vi.advanceTimersByTimeAsync(RUN_TIMEOUT_MS - 1);
+    expect(scheduler.isRunning()).toBe(true);
+    expect(scheduler.trigger()).toBe(false);
+
+    await vi.advanceTimersByTimeAsync(1);
+    expect(seen?.aborted).toBe(true);
+    expect(scheduler.isRunning()).toBe(false);
+    expect(listener).toHaveBeenCalledTimes(2);
+    expect(log).toHaveBeenCalledWith(expect.stringContaining("timed out"), expect.anything());
+
+    // The next run starts, after waiting (capped) for the hung one to settle.
+    expect(scheduler.trigger()).toBe(true);
+    expect(scheduler.isRunning()).toBe(true);
+    await vi.advanceTimersByTimeAsync(SETTLE_CAP);
+    expect(run).toHaveBeenCalledTimes(2);
+    scheduler.dispose();
+  });
+
+  it("a timed-out run that settles late does not release the next run's guard", async () => {
+    const hung = deferred();
+    const next = deferred();
+    const run = vi.fn().mockReturnValueOnce(hung.promise).mockReturnValueOnce(next.promise);
+    const { scheduler } = setup(run);
+
+    scheduler.trigger();
+    await vi.advanceTimersByTimeAsync(RUN_TIMEOUT_MS);
+    scheduler.trigger();
+    hung.resolve();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(run).toHaveBeenCalledTimes(2);
+    expect(scheduler.isRunning()).toBe(true);
+
+    next.resolve();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(scheduler.isRunning()).toBe(false);
+    scheduler.dispose();
+  });
+
+  it("a run that ends in time leaves only the interval timer", async () => {
+    const { scheduler } = setup(() => Promise.resolve());
+    scheduler.trigger();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(vi.getTimerCount()).toBe(1);
+    scheduler.dispose();
   });
 
   it("dispose is idempotent and later triggers do not start a run", () => {
