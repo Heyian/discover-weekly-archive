@@ -39,12 +39,10 @@ spicetify apply          # restarts Spotify
 
 ### From a release zip
 
-Download the zip from the
-[releases page](https://github.com/Heyian/discover-weekly-archive/releases), then install it with
-`spicetify pkg install` and the path to the zip:
+Install a release's zip by URL. This form skips checksum verification.
 
 ```bash
-spicetify pkg install ./discover-weekly-archive@<version>.zip
+spicetify pkg install discover-weekly-archive https://github.com/Heyian/discover-weekly-archive/releases/download/v<version>/discover-weekly-archive@<version>.zip
 spicetify pkg enable discover-weekly-archive
 spicetify apply
 ```
