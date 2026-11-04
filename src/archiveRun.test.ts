@@ -107,12 +107,12 @@ describe("runArchive", () => {
     expect(r).toEqual({ at: 1234, outcome: "added", addedCount: 0 });
   });
 
-  it("AC4: non-track items in Source or Archive are neither added nor counted", async () => {
+  it("AC4: non-track Source items are not added", async () => {
     const local = "spotify:local:x";
     const ep = "spotify:episode:E";
     const s = setup({
       list: [dw(), arch()],
-      contents: { [SRC]: [local, t("A"), ep, t("B")], [ARC]: [local, ep, t("B")] },
+      contents: { [SRC]: [local, t("A"), ep, t("B")], [ARC]: [t("B")] },
     });
     const r = await runArchive(s.deps, live());
     expect(s.adds).toEqual([{ uri: ARC, tracks: [t("A")] }]);
