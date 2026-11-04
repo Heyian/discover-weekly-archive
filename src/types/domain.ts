@@ -28,3 +28,17 @@ export interface PlaylistEntry {
   /** From Live verification's own-Discover-Weekly field; null when none exists (AC17). */
   isOwnDiscoverWeekly: boolean | null;
 }
+
+export interface LibraryPort {
+  /** Every playlist in the Rootlist, depth-first, folders flattened. */
+  listPlaylists(): Promise<PlaylistEntry[]>;
+  /** Creates `name` in the library root; resolves to its URI. */
+  createPlaylist(name: string): Promise<string>;
+}
+
+export interface PlaylistPort {
+  /** Every item URI on every page, in playlist order. */
+  readItemUris(uri: string): Promise<string[]>;
+  /** One add call appending `trackUris` (≤ ADD_BATCH_SIZE) at the end. */
+  addTracks(uri: string, trackUris: string[]): Promise<void>;
+}
