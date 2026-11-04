@@ -17,6 +17,16 @@ export interface ArchiveRunDeps {
 
 /** One Archive run (spec Design § Archive run). Never throws. Resolves null when aborted. */
 export async function runArchive(deps: ArchiveRunDeps, signal: AbortSignal): Promise<RunRecord | null> {
+  try {
+    return await execute(deps, signal);
+  } catch (err) {
+    // A failing store or notice port: nothing more to write or show.
+    deps.log("Archive run crashed", err);
+    return null;
+  }
+}
+
+async function execute(deps: ArchiveRunDeps, signal: AbortSignal): Promise<RunRecord | null> {
   const { library, playlists, store, notices, log, now, batchSize } = deps;
   let addedCount = 0;
 
@@ -64,11 +74,12 @@ export async function runArchive(deps: ArchiveRunDeps, signal: AbortSignal): Pro
     return finish("source-empty");
   }
 
+  let archiveName: string;
+  let created: boolean;
   try {
     const existing = resolveArchive(all, store.getArchiveUri());
     let archiveUri: string;
-    let archiveName: string;
-    const created = existing === null;
+    created = existing === null;
     if (existing) {
       archiveUri = existing.uri;
       archiveName = existing.name;
@@ -87,11 +98,11 @@ export async function runArchive(deps: ArchiveRunDeps, signal: AbortSignal): Pro
       if (signal.aborted) return null;
       addedCount += batch.length;
     }
-
-    const record = finish("added");
-    if (addedCount > 0) notices.archived(addedCount, archiveName, created);
-    return record;
   } catch (err) {
     return signal.aborted ? null : fail(err);
   }
+
+  const record = finish("added");
+  if (addedCount > 0) notices.archived(addedCount, archiveName, created);
+  return record;
 }

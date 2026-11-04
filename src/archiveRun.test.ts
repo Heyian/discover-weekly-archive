@@ -245,6 +245,29 @@ describe("runArchive", () => {
     expect(s.notices.archived).not.toHaveBeenCalled();
   });
 
+  it("a throwing archived notice does not relabel a successful run", async () => {
+    const s = setup({ list: [dw(), arch()], contents: { [SRC]: [t("A")], [ARC]: [] } });
+    const boom = new Error("notice failed");
+    s.notices.archived = vi.fn(() => {
+      throw boom;
+    });
+    const r = await runArchive(s.deps, live());
+    expect(r).toBeNull();
+    expect(s.store.getLastRun()).toEqual({ at: 1234, outcome: "added", addedCount: 1 });
+    expect(s.notices.error).not.toHaveBeenCalled();
+    expect(s.log).toHaveBeenCalledWith(expect.any(String), boom);
+  });
+
+  it("a throwing setLastRun resolves instead of rejecting", async () => {
+    const s = setup({ list: [dw(), arch()], contents: { [SRC]: [t("A")], [ARC]: [] } });
+    const boom = new Error("storage failed");
+    s.setLastRun.mockImplementation(() => {
+      throw boom;
+    });
+    await expect(runArchive(s.deps, live())).resolves.toBeNull();
+    expect(s.log).toHaveBeenCalledWith(expect.any(String), boom);
+  });
+
   describe("AC29: abort while an await is pending", () => {
     const points = ["list", "source read", "create", "archive read", "add"] as const;
 
