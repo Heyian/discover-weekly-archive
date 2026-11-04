@@ -35,29 +35,57 @@ function Section({ store, scheduler, library, formatTime }: SettingsDeps) {
   const [running, setRunning] = React.useState(() => scheduler.isRunning());
   const [status, setStatus] = React.useState(() => statusLine(store.getLastRun(), formatTime));
 
-  React.useEffect(() => {
-    let active = true;
+  const mounted = React.useRef(true);
+  const listRef = React.useRef<PlaylistList | null>(null);
+  const reloadedFor = React.useRef<string | null>(null);
+
+  const loadList = React.useCallback((): void => {
     library.listPlaylists().then(
       (playlists) => {
-        if (active) setList({ ok: true, playlists });
+        if (!mounted.current) return;
+        listRef.current = { ok: true, playlists };
+        setList(listRef.current);
       },
       () => {
-        if (active) setList({ ok: false });
+        if (!mounted.current) return;
+        listRef.current = { ok: false };
+        setList(listRef.current);
       },
     );
-    return () => {
-      active = false;
-    };
   }, [library]);
 
   React.useEffect(() => {
+    mounted.current = true;
+    loadList();
+    return () => {
+      mounted.current = false;
+    };
+  }, [loadList]);
+
+  React.useEffect(() => {
     const refresh = (): void => {
-      setRunning(scheduler.isRunning());
+      const running = scheduler.isRunning();
+      const archive = store.getArchiveUri();
+      setRunning(running);
       setStatus(statusLine(store.getLastRun(), formatTime));
+      setSourceUri(store.getSourceUri());
+      setArchiveUri(archive);
+      // A run may have created or found the Archive after the list loaded: reload once per URI.
+      const loaded = listRef.current;
+      if (
+        !running &&
+        archive !== null &&
+        loaded?.ok &&
+        !loaded.playlists.some((p) => p.uri === archive) &&
+        reloadedFor.current !== archive
+      ) {
+        reloadedFor.current = archive;
+        loadList();
+      }
     };
     refresh();
     return scheduler.onChange(refresh);
-  }, [scheduler, store, formatTime]);
+  }, [scheduler, store, formatTime, loadList]);
 
   return (
     <SettingsSection title="Discover Weekly Archive">
