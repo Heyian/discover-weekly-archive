@@ -6,10 +6,11 @@ export function isArchiveCandidate(p: PlaylistEntry): boolean {
 }
 
 function detectSource(playlists: PlaylistEntry[]): PlaylistEntry | null {
-  const matches = playlists.filter(
-    (p) => p.name === DISCOVER_WEEKLY_NAME && p.ownedBySpotify && p.isOwnDiscoverWeekly !== false,
+  return (
+    playlists.find(
+      (p) => p.name === DISCOVER_WEEKLY_NAME && p.ownedBySpotify && p.isOwnDiscoverWeekly !== false,
+    ) ?? null
   );
-  return matches.find((p) => p.isOwnDiscoverWeekly === true) ?? matches[0] ?? null;
 }
 
 /** `savedUri` of "" means automatic detection. */

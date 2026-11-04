@@ -31,6 +31,10 @@ describe("resolveSource", () => {
     const second = dw({ uri: "2", isOwnDiscoverWeekly: true });
     expect(resolveSource([dw({ uri: "1", isOwnDiscoverWeekly: false }), second], "")).toBe(second);
   });
+  it("AC17 takes the first passing match, null before true", () => {
+    const first = dw({ uri: "1", isOwnDiscoverWeekly: null });
+    expect(resolveSource([first, dw({ uri: "2", isOwnDiscoverWeekly: true })], "")).toBe(first);
+  });
   it("AC17 takes the first when the field is null on all", () => {
     const first = dw({ uri: "1" });
     expect(resolveSource([first, dw({ uri: "2" })], "")).toBe(first);
