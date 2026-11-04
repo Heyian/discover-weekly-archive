@@ -1,0 +1,18 @@
+{
+  "name": "discover-weekly-archive",
+  "version": "0.0.0",
+  "description": "Copies each week's Discover Weekly into a \"Discover Weekly Archive\" playlist, skipping songs already there. Creates that playlist in your library if you don't have one. Runs while Spotify is open.",
+  "authors": [
+    "Heyian"
+  ],
+  "entries": {
+    "js": "index.js"
+  },
+  "hasMixins": false,
+  "dependencies": {
+    "stdlib": "^1.13.0"
+  },
+  "preview": "https://raw.githubusercontent.com/Heyian/discover-weekly-archive/main/docs/preview.png",
+  "repository": "https://github.com/Heyian/discover-weekly-archive",
+  "license": "MIT"
+}
