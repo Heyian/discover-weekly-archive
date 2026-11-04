@@ -1,0 +1,31 @@
+{
+  "name": "discover-weekly-archive",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Copies each week's Discover Weekly into a \"Discover Weekly Archive\" playlist, skipping songs already there. Creates that playlist in your library if you don't have one. Runs while Spotify is open.",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Heyian/discover-weekly-archive.git"
+  },
+  "author": "Heyian",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "bun run build.ts",
+    "build:local": "bun run build.ts --local",
+    "watch": "bun run build.ts --watch",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit",
+    "check": "bun run typecheck && bun run test",
+    "check:dist": "bun scripts/checkDist.ts"
+  },
+  "devDependencies": {
+    "@spicetify/kit": "0.4.4",
+    "@types/bun": "^1.3.14",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "happy-dom": "^20.11.1",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.4"
+  }
+}
