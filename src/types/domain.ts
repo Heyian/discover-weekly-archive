@@ -29,9 +29,15 @@ export interface PlaylistEntry {
   isOwnDiscoverWeekly: boolean | null;
 }
 
-export interface LibraryPort {
+export interface Rootlist {
   /** Every playlist in the Rootlist, depth-first, folders flattened. */
-  listPlaylists(): Promise<PlaylistEntry[]>;
+  playlists: PlaylistEntry[];
+  /** URIs of Rootlist entries the server reports missing or forbidden (placeholders). */
+  unavailableUris: string[];
+}
+
+export interface LibraryPort {
+  readRootlist(): Promise<Rootlist>;
   /** Creates `name` in the library root; resolves to its URI. */
   createPlaylist(name: string): Promise<string>;
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import { runArchive, type ArchiveRunDeps } from "./archiveRun";
 import { ARCHIVE_NAME } from "./constants";
-import { shortReason } from "./messages";
+import { ARCHIVE_UNAVAILABLE_REASON, shortReason } from "./messages";
 import type { Notices } from "./notices";
 import { createStore } from "./storage";
 import type { LibraryPort, PlaylistEntry, PlaylistPort } from "./types/domain";
@@ -35,6 +35,7 @@ function setup(opts: {
   contents?: Record<string, string[]>;
   batchSize?: number;
   saved?: { source?: string; archive?: string };
+  unavailable?: string[];
 }) {
   const mem = new Map<string, string>();
   const store = createStore({ get: (k) => mem.get(k) ?? null, set: (k, v) => void mem.set(k, v) });
@@ -43,7 +44,7 @@ function setup(opts: {
   const contents: Record<string, string[]> = { ...(opts.contents ?? {}) };
   const adds: { uri: string; tracks: string[] }[] = [];
   const library: LibraryPort = {
-    listPlaylists: vi.fn(async () => opts.list ?? []),
+    readRootlist: vi.fn(async () => ({ playlists: opts.list ?? [], unavailableUris: opts.unavailable ?? [] })),
     createPlaylist: vi.fn(async () => {
       contents[NEW] = [];
       return NEW;
@@ -226,12 +227,51 @@ describe("runArchive", () => {
     expect(s.library.createPlaylist).not.toHaveBeenCalled();
   });
 
+  it("a saved Archive reported unavailable ends in error; no name lookup, creation or add", async () => {
+    const s = setup({
+      list: [dw(), arch()],
+      unavailable: ["spotify:playlist:gone"],
+      saved: { archive: "spotify:playlist:gone" },
+      contents: { [SRC]: [t("A")], [ARC]: [] },
+    });
+    const r = await runArchive(s.deps, live());
+    expect(r).toEqual({ at: 1234, outcome: "error", addedCount: 0, error: ARCHIVE_UNAVAILABLE_REASON });
+    expect(s.notices.error).toHaveBeenCalledWith(ARCHIVE_UNAVAILABLE_REASON);
+    expect(s.library.createPlaylist).not.toHaveBeenCalled();
+    expect(s.setArchiveUri).not.toHaveBeenCalled();
+    expect(s.store.getArchiveUri()).toBe("spotify:playlist:gone");
+    expect(s.adds).toEqual([]);
+  });
+
+  it("an unavailable entry that is not the saved Archive changes nothing", async () => {
+    const s = setup({
+      list: [dw(), arch()],
+      unavailable: ["spotify:playlist:gone"],
+      contents: { [SRC]: [t("A")], [ARC]: [] },
+    });
+    const r = await runArchive(s.deps, live());
+    expect(r?.outcome).toBe("added");
+    expect(s.adds).toEqual([{ uri: ARC, tracks: [t("A")] }]);
+  });
+
+  it("AC19: a saved Source reported unavailable falls back to Automatic detection", async () => {
+    const s = setup({
+      list: [dw(), arch()],
+      unavailable: ["spotify:playlist:gone"],
+      saved: { source: "spotify:playlist:gone" },
+      contents: { [SRC]: [t("A")], [ARC]: [] },
+    });
+    await runArchive(s.deps, live());
+    expect(s.playlists.readItemUris).toHaveBeenNthCalledWith(1, SRC);
+    expect(s.adds).toEqual([{ uri: ARC, tracks: [t("A")] }]);
+  });
+
   describe("AC27: throws end in an error record", () => {
     const fail = async () => {
       throw new Error("E");
     };
     const cases: [string, (s: Setup) => void][] = [
-      ["listPlaylists", (s) => void (s.library.listPlaylists = fail)],
+      ["readRootlist", (s) => void (s.library.readRootlist = fail)],
       [
         "Archive read",
         (s) => {
@@ -242,7 +282,7 @@ describe("runArchive", () => {
       [
         "createPlaylist",
         (s) => {
-          s.library.listPlaylists = async () => [dw()];
+          s.library.readRootlist = async () => ({ playlists: [dw()], unavailableUris: [] });
           s.library.createPlaylist = fail;
         },
       ],
@@ -312,12 +352,12 @@ describe("runArchive", () => {
         await gateOpen;
       };
       const { library, playlists } = s;
-      const list = library.listPlaylists;
+      const list = library.readRootlist;
       const create = library.createPlaylist;
       const read = playlists.readItemUris;
       const add = playlists.addTracks;
       if (point === "list") {
-        library.listPlaylists = async () => (await gate(), list());
+        library.readRootlist = async () => (await gate(), list());
       }
       if (point === "create") {
         library.createPlaylist = async (n) => (await gate(), create(n));

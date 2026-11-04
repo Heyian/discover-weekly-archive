@@ -2,7 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach, type Mock } from "vite
 
 vi.mock("./ui/settingsSection", () => ({ registerSettingsSection: vi.fn() }));
 vi.mock("./platform/library", () => ({
-  createLibrary: vi.fn(() => ({ listPlaylists: vi.fn(async () => []), createPlaylist: vi.fn() })),
+  createLibrary: vi.fn(() => ({
+    readRootlist: vi.fn(async () => ({ playlists: [], unavailableUris: [] })),
+    createPlaylist: vi.fn(),
+  })),
 }));
 vi.mock("./platform/playlist", () => ({
   createPlaylists: vi.fn(() => ({ readItemUris: vi.fn(async () => []), addTracks: vi.fn() })),
@@ -52,12 +55,12 @@ function unload(c: Ctx): void {
 
 /** The n-th library load() built (0-based). */
 const library = (n: number) =>
-  vi.mocked(createLibrary).mock.results[n]!.value as { listPlaylists: Mock; createPlaylist: Mock };
+  vi.mocked(createLibrary).mock.results[n]!.value as { readRootlist: Mock; createPlaylist: Mock };
 
 /** Archive runs started across every load: each run lists the Rootlist first. */
 const runs = (): number =>
   vi.mocked(createLibrary).mock.results.reduce(
-    (sum, r) => sum + (r.value as { listPlaylists: Mock }).listPlaylists.mock.calls.length,
+    (sum, r) => sum + (r.value as { readRootlist: Mock }).readRootlist.mock.calls.length,
     0,
   );
 
@@ -153,8 +156,8 @@ describe("load", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(vi.getTimerCount()).toBe(1);
     expect(registerSettingsSection).toHaveBeenCalledTimes(2);
-    expect(library(0).listPlaylists).not.toHaveBeenCalled();
-    expect(library(1).listPlaylists).toHaveBeenCalledTimes(1);
+    expect(library(0).readRootlist).not.toHaveBeenCalled();
+    expect(library(1).readRootlist).toHaveBeenCalledTimes(1);
   });
 
   it("AC33: a throwing settings registration rejects load and leaves no timer", async () => {
@@ -206,7 +209,7 @@ describe("adapters", () => {
     stubSpicetify(READY_PLATFORM());
     const err = new Error("rootlist down");
     vi.mocked(createLibrary).mockReturnValueOnce({
-      listPlaylists: vi.fn(async () => {
+      readRootlist: vi.fn(async () => {
         throw err;
       }),
       createPlaylist: vi.fn(),

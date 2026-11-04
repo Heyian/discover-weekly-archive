@@ -29,6 +29,9 @@ export function archivedNotice(count: number, archiveName: string, created: bool
 export const SOURCE_MISSING_NOTICE =
   "Discover Weekly Archive couldn't find Discover Weekly. Save it to your library, or pick it in Spicetify Settings.";
 
+/** Error reason when the saved Archive is a Rootlist placeholder (missing or forbidden). */
+export const ARCHIVE_UNAVAILABLE_REASON = "Archive playlist unavailable — pick one in Spicetify Settings";
+
 export function errorNotice(reason: string): string {
   return `Discover Weekly Archive failed: ${reason}`;
 }

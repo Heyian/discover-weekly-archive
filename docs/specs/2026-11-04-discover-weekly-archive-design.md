@@ -137,6 +137,9 @@ playlist is only created when there is at least one song to put in it (Q7).
 4. **Resolve the Archive playlist.**
    - The saved Archive URI wins whenever it is still in the Rootlist, whatever its current name,
      owner or edit flag. No name lookup or creation happens.
+     A Rootlist entry the server reports missing or forbidden (a placeholder) counts as still in
+     the Rootlist: the run ends with outcome `error` ("Archive playlist unavailable"), and no name
+     lookup or creation happens (ruled 2026-11-04).
    - Otherwise, take the first playlist in Rootlist order (depth-first) that the user owns, can edit
      and is named exactly `ARCHIVE_NAME` ("Discover Weekly Archive"). Both "owns" and "can edit"
      must hold.

@@ -1,4 +1,4 @@
-import type { LibraryPort, PlaylistEntry } from "../types/domain";
+import type { LibraryPort, Rootlist } from "../types/domain";
 
 /** The slice of `Spicetify.Platform` this adapter reads. */
 interface LibraryPlatform {
@@ -20,7 +20,7 @@ interface RawNode {
   formatListData?: { attributes?: Record<string, unknown> } | null;
 }
 
-function collect(node: RawNode, username: string | undefined, out: PlaylistEntry[]): void {
+function collect(node: RawNode, username: string | undefined, out: Rootlist): void {
   if (node.type === "folder") {
     if (Array.isArray(node.items)) {
       for (const child of node.items) {
@@ -29,9 +29,15 @@ function collect(node: RawNode, username: string | undefined, out: PlaylistEntry
     }
     return;
   }
-  if (node.type !== "playlist" || typeof node.uri !== "string") return;
+  if (typeof node.uri !== "string") return;
+  // A playlist the server reports missing or forbidden (docs/spicetify-v3-platform.md).
+  if (node.type === "placeholder") {
+    out.unavailableUris.push(node.uri);
+    return;
+  }
+  if (node.type !== "playlist") return;
   const mf = node.formatListData?.attributes?.["madeFor.username"];
-  out.push({
+  out.playlists.push({
     uri: node.uri,
     name: typeof node.name === "string" ? node.name : "",
     ownedBySpotify: node.owner?.username === "spotify",
@@ -44,10 +50,10 @@ function collect(node: RawNode, username: string | undefined, out: PlaylistEntry
 export function createLibrary(platform?: LibraryPlatform): LibraryPort {
   const current = (): LibraryPlatform => platform ?? Spicetify.Platform;
   return {
-    async listPlaylists() {
+    async readRootlist() {
       const p = current();
       const root = await p.RootlistAPI.getContents();
-      const out: PlaylistEntry[] = [];
+      const out: Rootlist = { playlists: [], unavailableUris: [] };
       if (root && typeof root === "object") collect(root as RawNode, p.username, out);
       return out;
     },

@@ -1,5 +1,5 @@
 import { ARCHIVE_NAME } from "./constants";
-import { shortReason } from "./messages";
+import { ARCHIVE_UNAVAILABLE_REASON, shortReason } from "./messages";
 import type { Notices } from "./notices";
 import { batches, missingTracks, resolveArchive, resolveSource, trackUris } from "./resolve";
 import type { Store } from "./storage";
@@ -46,8 +46,9 @@ async function execute(deps: ArchiveRunDeps, signal: AbortSignal): Promise<RunRe
   };
 
   let all: PlaylistEntry[];
+  let unavailable: string[];
   try {
-    all = await library.listPlaylists();
+    ({ playlists: all, unavailableUris: unavailable } = await library.readRootlist());
   } catch (err) {
     return signal.aborted ? null : fail(err);
   }
@@ -74,10 +75,17 @@ async function execute(deps: ArchiveRunDeps, signal: AbortSignal): Promise<RunRe
     return finish("source-empty");
   }
 
+  // A saved Archive the server reports missing or forbidden is still in the Rootlist, so step 4's
+  // "saved URI wins" holds: name lookup or creation would make a second Archive. Stop instead.
+  const savedArchive = store.getArchiveUri();
+  if (savedArchive && unavailable.includes(savedArchive) && !all.some((p) => p.uri === savedArchive)) {
+    return fail(new Error(ARCHIVE_UNAVAILABLE_REASON));
+  }
+
   let archiveName: string;
   let created: boolean;
   try {
-    const existing = resolveArchive(all, store.getArchiveUri());
+    const existing = resolveArchive(all, savedArchive);
     let archiveUri: string;
     created = existing === null;
     if (existing) {

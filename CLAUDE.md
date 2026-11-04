@@ -70,6 +70,8 @@ Load-bearing; violating any is a defect. Rationale is in the spec.
   - `RootlistAPI.createPlaylist` returns `null` on failure; treat it as an error.
   - `PlaylistAPI.add` needs `{ after: "end" }`; without a location it throws.
   - `PlaylistAPI.getContents` needs both `offset` and `limit`; `offset` alone returns nothing.
+  - A Rootlist `placeholder` (missing or forbidden playlist) has no name. A saved Archive that is
+    one ends the run `error`; never name-look-up or create past it (a second Archive).
 - **Detection is by playlist name.** The user declined the language-independent
   `formatListData.type === "discover-weekly"` lookup (2026-11-04). Do not add it unasked.
 

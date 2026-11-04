@@ -40,8 +40,8 @@ function Section({ store, scheduler, library, formatTime }: SettingsDeps) {
   const reloadedFor = React.useRef<string | null>(null);
 
   const loadList = React.useCallback((): void => {
-    library.listPlaylists().then(
-      (playlists) => {
+    library.readRootlist().then(
+      ({ playlists }) => {
         if (!mounted.current) return;
         listRef.current = { ok: true, playlists };
         setList(listRef.current);

@@ -155,7 +155,10 @@ Source: CDP `Object.keys(Spicetify.Platform)`, `Spicetify.Platform.username`.
 - A playlist is `{ type: "playlist", uri, name, owner, isOwnedBySelf, canAdd, canRemove,
   canEditItems, canEditMetadata, formatListData, totalLength, madeFor, isSaved, … }`.
 - A playlist the server reports missing or forbidden becomes
-  `{ type: "placeholder", uri, addedAt, isNotFound, isForbidden }`: no `name`, no `owner`. Skip it.
+  `{ type: "placeholder", uri, addedAt, isNotFound, isForbidden }`: no `name`, no `owner`. The
+  adapter lists it in `unavailableUris`, never as a playlist. A saved Archive that is a placeholder
+  ends the run `error` with no name lookup or creation (it is still in the Rootlist, spec step 4);
+  a saved Source that is one falls back to Automatic detection.
 - Discover Weekly live:
   `name: "Discover Weekly"`, `uri: "spotify:playlist:<id>"` (per account),
   `owner: { type: "user", uri: "spotify:user:spotify", username: "spotify", displayName: "Spotify", images: [] }`,

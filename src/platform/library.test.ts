@@ -20,14 +20,17 @@ function fakePlatform(root: unknown) {
   };
 }
 
-describe("createLibrary.listPlaylists", () => {
+const playlists = async (platform: ReturnType<typeof fakePlatform>) =>
+  (await createLibrary(platform).readRootlist()).playlists;
+
+describe("createLibrary.readRootlist", () => {
   it("flattens folders depth-first", async () => {
     const root = folder("<root>", [
       pl("spotify:playlist:a", "A"),
       folder("f", [pl("spotify:playlist:b", "B"), folder("g", [pl("spotify:playlist:c", "C")])]),
       pl("spotify:playlist:d", "D"),
     ]);
-    const out = await createLibrary(fakePlatform(root)).listPlaylists();
+    const out = await playlists(fakePlatform(root));
     expect(out.map((e) => e.name)).toEqual(["A", "B", "C", "D"]);
   });
 
@@ -40,7 +43,7 @@ describe("createLibrary.listPlaylists", () => {
       }),
       pl("spotify:playlist:mine", "DWA dev"),
     ]);
-    const [dw, mine] = await createLibrary(fakePlatform(root)).listPlaylists();
+    const [dw, mine] = await playlists(fakePlatform(root));
     expect(dw).toMatchObject({ ownedBySpotify: true, ownedByUser: false, canEdit: false });
     expect(mine).toMatchObject({ ownedBySpotify: false, ownedByUser: true, canEdit: true });
   });
@@ -53,7 +56,7 @@ describe("createLibrary.listPlaylists", () => {
         formatListData: { type: "discover-weekly" },
       }),
     ]);
-    const [x] = await createLibrary(fakePlatform(root)).listPlaylists();
+    const [x] = await playlists(fakePlatform(root));
     expect(x).toMatchObject({ canEdit: false, isOwnDiscoverWeekly: null });
   });
 
@@ -65,18 +68,30 @@ describe("createLibrary.listPlaylists", () => {
       pl("spotify:playlist:none", "None"),
       pl("spotify:playlist:empty", "Empty", attrs("")),
     ]);
-    const out = await createLibrary(fakePlatform(root)).listPlaylists();
+    const out = await playlists(fakePlatform(root));
     expect(out.map((e) => e.isOwnDiscoverWeekly)).toEqual([true, false, null, null]);
+  });
+
+  it("reports placeholders as unavailable URIs, not as playlists, folders included", async () => {
+    const root = folder("<root>", [
+      { type: "placeholder", uri: "spotify:playlist:p", addedAt: {}, isNotFound: true, isForbidden: false },
+      pl("spotify:playlist:a", "A"),
+      folder("f", [{ type: "placeholder", uri: "spotify:playlist:q", isNotFound: false, isForbidden: true }]),
+      { type: "placeholder" },
+    ]);
+    const out = await createLibrary(fakePlatform(root)).readRootlist();
+    expect(out.playlists.map((e) => e.uri)).toEqual(["spotify:playlist:a"]);
+    expect(out.unavailableUris).toEqual(["spotify:playlist:p", "spotify:playlist:q"]);
   });
 
   it("skips unknown item types and tolerates missing owner and name", async () => {
     const root = folder("<root>", [
-      { type: "placeholder", uri: "spotify:playlist:p", isNotFound: true },
       { type: "weird", uri: "x" },
       { type: "playlist", uri: "spotify:playlist:bare" },
     ]);
-    const out = await createLibrary(fakePlatform(root)).listPlaylists();
-    expect(out).toEqual([
+    const out = await createLibrary(fakePlatform(root)).readRootlist();
+    expect(out.unavailableUris).toEqual([]);
+    expect(out.playlists).toEqual([
       {
         uri: "spotify:playlist:bare",
         name: "",
@@ -91,11 +106,11 @@ describe("createLibrary.listPlaylists", () => {
   it("rejects when getContents rejects", async () => {
     const platform = fakePlatform(null);
     platform.RootlistAPI.getContents.mockRejectedValue(new Error("boom"));
-    await expect(createLibrary(platform).listPlaylists()).rejects.toThrow("boom");
+    await expect(createLibrary(platform).readRootlist()).rejects.toThrow("boom");
   });
 
   it("returns [] for an empty or missing root", async () => {
-    expect(await createLibrary(fakePlatform(null)).listPlaylists()).toEqual([]);
+    expect(await createLibrary(fakePlatform(null)).readRootlist()).toEqual({ playlists: [], unavailableUris: [] });
   });
 
   it("reads Spicetify.Platform at call time when none is passed", async () => {
@@ -104,7 +119,7 @@ describe("createLibrary.listPlaylists", () => {
       Platform: fakePlatform(folder("<root>", [pl("spotify:playlist:a", "A")])),
     });
     try {
-      expect((await lib.listPlaylists()).map((e) => e.name)).toEqual(["A"]);
+      expect((await lib.readRootlist()).playlists.map((e) => e.name)).toEqual(["A"]);
     } finally {
       vi.unstubAllGlobals();
     }
