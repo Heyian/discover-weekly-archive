@@ -4,6 +4,7 @@
   "packages": {
     ".": {
       "release-type": "node",
+      "initial-version": "0.1.0",
       "bump-minor-pre-major": true,
       "extra-files": [{ "type": "json", "path": "src/metadata.json", "jsonpath": "$.version" }],
       "include-component-in-tag": false
