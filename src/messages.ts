@@ -35,6 +35,6 @@ export function errorNotice(reason: string): string {
 
 export function shortReason(error: unknown): string {
   const message = error instanceof Error ? error.message : String(error);
-  const firstLine = message.split("\n")[0] ?? "";
+  const firstLine = (message.split(/\r?\n/)[0] ?? "").trim() || "unknown error";
   return firstLine.length > MAX_REASON ? `${firstLine.slice(0, MAX_REASON - 1)}…` : firstLine;
 }

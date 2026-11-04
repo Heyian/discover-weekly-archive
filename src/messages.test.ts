@@ -44,4 +44,15 @@ describe("shortReason", () => {
   it("cuts to 80 chars with an ellipsis", () => {
     expect(shortReason(new Error("x".repeat(100)))).toBe("x".repeat(79) + "…");
   });
+  it("drops the trailing CR of CRLF messages", () => {
+    expect(shortReason(new Error("a\r\nb"))).toBe("a");
+  });
+  it("falls back to unknown error for an empty message", () => {
+    expect(shortReason(new Error(""))).toBe("unknown error");
+    expect(shortReason(new Error("  \nb"))).toBe("unknown error");
+  });
+  it("keeps 80 chars whole and cuts 81 to 79 plus an ellipsis", () => {
+    expect(shortReason(new Error("x".repeat(80)))).toBe("x".repeat(80));
+    expect(shortReason(new Error("x".repeat(81)))).toBe("x".repeat(79) + "…");
+  });
 });
