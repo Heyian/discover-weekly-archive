@@ -1,9 +1,9 @@
-// Capped wait for client readiness before load() touches Spicetify.
+// Capped wait for client readiness before the launch run touches the Spicetify globals.
 // Pure: the probe and the timer are injected; index.ts supplies the Spicetify probe.
 import type { TimerId, TimerPort } from "./types/domain";
 
 export interface WaitForClientOptions {
-  /** Names of the globals still absent, e.g. `"Spicetify.ContextMenu"`; empty when ready. */
+  /** Names of the globals still absent, as dotted paths from the Spicetify global; empty when ready. */
   missing: () => string[];
   timer: TimerPort;
   timeoutMs: number;

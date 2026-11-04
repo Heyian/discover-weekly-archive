@@ -4,8 +4,8 @@
 //   bun run build:local   → build into ./dist/discover-weekly-archive@<version>/
 //   bun run watch         → rebuild on change and install as `build` does
 //
-// Kit (`spicetify-kit build src`) bundles `src/index.ts`, compiles
-// `src/index.scss` to `index.css`, copies `src/metadata.json`, writes the
+// Kit (`spicetify-kit build src`) bundles `src/index.ts` (there is no
+// stylesheet), copies `src/metadata.json`, writes the
 // `spicetify-module.json` sidecar and runs the module-standard check, failing
 // on an error-tier finding. React resolves through stdlib's react-shim. Kit
 // writes to a scratch folder; this script copies its versioned output into

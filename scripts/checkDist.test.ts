@@ -20,7 +20,7 @@ async function fixture(
   const dir = join(root, folder);
   await mkdir(dir);
   const all: Record<string, string> = {
-    "index.js": "export {};\n",
+    "index.js": 'import React from "/modules/stdlib/src/expose/react-shim.js";\n',
     "index.js.map": "{}",
     "metadata.json": JSON.stringify(SOURCE),
     "spicetify-module.json": "{}",
@@ -54,6 +54,11 @@ describe("checkDist", () => {
 
   it("reports a folder name that does not match name@version", async () => {
     expect(checkDist(await fixture("discover-weekly-archive"), SOURCE)).not.toEqual([]);
+  });
+
+  it("reports index.js without the react-shim import", async () => {
+    const dir = await fixture(undefined, { "index.js": "const React = Spicetify.React;\n" });
+    expect(checkDist(dir, SOURCE)).not.toEqual([]);
   });
 
   it("accepts a matching tag", async () => {

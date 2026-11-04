@@ -12,6 +12,7 @@ import { basename, join } from "node:path";
 import { isDeepStrictEqual } from "node:util";
 
 const FILES = ["index.js", "index.js.map", "metadata.json", "spicetify-module.json"];
+const REACT_SHIM = "/modules/stdlib/src/expose/react-shim.js";
 
 /** Problems with the built folder `dir`, empty when it passes. */
 export function checkDist(dir: string, source: Record<string, unknown>, tag?: string): string[] {
@@ -30,6 +31,9 @@ export function checkDist(dir: string, source: Record<string, unknown>, tag?: st
   if (metadata !== undefined && !isDeepStrictEqual(JSON.parse(metadata), source)) {
     problems.push("metadata.json differs from src/metadata.json");
   }
+
+  const js = read("index.js");
+  if (js !== undefined && !js.includes(`"${REACT_SHIM}"`)) problems.push(`index.js does not import ${REACT_SHIM}`);
 
   return problems;
 }

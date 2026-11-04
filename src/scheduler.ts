@@ -64,7 +64,7 @@ export function createScheduler(opts: {
   };
 }
 
-/** Launch run: trigger once `waitReady` resolves, unless `signal` aborted; log on rejection. */
+/** Launch run: trigger once `waitReady` resolves, unless `signal` aborted; log a rejection not caused by the abort. */
 export function startLaunchRun(opts: {
   waitReady: () => Promise<void>;
   trigger: () => void;
@@ -76,6 +76,8 @@ export function startLaunchRun(opts: {
     () => {
       if (!signal.aborted) trigger();
     },
-    (error: unknown) => log("Launch run skipped: client not ready", error),
+    (error: unknown) => {
+      if (!signal.aborted) log("Launch run skipped: client not ready", error);
+    },
   );
 }

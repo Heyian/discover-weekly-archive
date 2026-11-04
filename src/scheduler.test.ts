@@ -210,4 +210,18 @@ describe("startLaunchRun", () => {
     await vi.advanceTimersByTimeAsync(0);
     expect(trigger).not.toHaveBeenCalled();
   });
+
+  it("AC30: logs nothing when the wait rejects because the module unloaded", async () => {
+    const d = deferred();
+    const ac = new AbortController();
+    const trigger = vi.fn();
+    const log = vi.fn();
+    startLaunchRun({ waitReady: () => d.promise, trigger, signal: ac.signal, log });
+
+    ac.abort();
+    d.reject(new Error("Wait for client aborted"));
+    await vi.advanceTimersByTimeAsync(0);
+    expect(trigger).not.toHaveBeenCalled();
+    expect(log).not.toHaveBeenCalled();
+  });
 });
