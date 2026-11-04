@@ -42,3 +42,13 @@ export interface PlaylistPort {
   /** One add call appending `trackUris` (≤ ADD_BATCH_SIZE) at the end. */
   addTracks(uri: string, trackUris: string[]): Promise<void>;
 }
+
+export type TimerId = ReturnType<typeof setTimeout>;
+
+/** Timer access, injected so the scheduler stays pure and testable. */
+export interface TimerPort {
+  setTimeout(cb: () => void, ms: number): TimerId;
+  clearTimeout(id: TimerId): void;
+  setInterval(cb: () => void, ms: number): TimerId;
+  clearInterval(id: TimerId): void;
+}
