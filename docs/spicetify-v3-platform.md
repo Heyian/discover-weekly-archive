@@ -52,6 +52,8 @@ Checked 2026-11-04 — Spotify 1.3.4.258, CLI 3.0.0-rc.3.
   unload then enable. Quitting Spotify runs no disposer.
 - **Enable does not re-import.** The loader caches the module namespace; `enable()` runs
   `preload`/`load` again on the cached object, so module-scope state survives disable → enable.
+  The module relies on this: `src/index.ts` keeps its run gate at module scope, so a new load's
+  first run waits (capped) for the previous load's aborted run, whose add may still be in flight.
 - **Partial load leaks.** If `load()` throws, the disposers it already registered never run (boot:
   the module is marked failed; `enable`: it returns `false`). `unload()` returns early when the
   module is not loaded. A module must undo its own partial work before re-throwing. The one

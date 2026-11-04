@@ -1,3 +1,4 @@
+import type { RunGate } from "./runGate";
 import type { TimerPort } from "./types/domain";
 
 export interface Scheduler {
@@ -12,11 +13,13 @@ export interface Scheduler {
 
 export function createScheduler(opts: {
   run: (signal: AbortSignal) => Promise<unknown>;
+  /** Shared across loads: a run starts once the previous load's last run settled (capped). */
+  gate: RunGate;
   timer: TimerPort;
   intervalMs: number;
   log: (message: string, detail?: unknown) => void;
 }): Scheduler {
-  const { run, timer, intervalMs, log } = opts;
+  const { run, gate, timer, intervalMs, log } = opts;
   const listeners = new Set<() => void>();
   let active: AbortController | null = null;
   let disposed = false;
@@ -30,16 +33,18 @@ export function createScheduler(opts: {
     const controller = new AbortController();
     active = controller;
     notify();
-    void (async () => {
-      try {
-        await run(controller.signal);
-      } catch (error) {
-        log("Archive run failed", error);
-      } finally {
+    void gate
+      .enter(controller.signal, async () => {
+        try {
+          await run(controller.signal);
+        } catch (error) {
+          log("Archive run failed", error);
+        }
+      })
+      .then(() => {
         active = null;
         notify();
-      }
-    })();
+      });
     return true;
   };
 

@@ -4,10 +4,11 @@
 // without awaiting the client, and registers its dispose with ctx.defer.
 // Every load() builds a fresh wiring; unload disposes all of it.
 import { runArchive } from "./archiveRun";
-import { ADD_BATCH_SIZE, READY_TIMEOUT_MS, RECHECK_INTERVAL_MS } from "./constants";
+import { ADD_BATCH_SIZE, PREVIOUS_RUN_WAIT_MS, READY_TIMEOUT_MS, RECHECK_INTERVAL_MS } from "./constants";
 import { createNotices } from "./notices";
 import { createLibrary } from "./platform/library";
 import { createPlaylists } from "./platform/playlist";
+import { createRunGate } from "./runGate";
 import { createScheduler, startLaunchRun } from "./scheduler";
 import { createStore } from "./storage";
 import { createDisposer } from "./teardown";
@@ -16,6 +17,10 @@ import type { StoragePort } from "./types/domain";
 import { notifications } from "./ui/notifications";
 import { registerSettingsSection, type ModuleRuntimeContext } from "./ui/settingsSection";
 import { waitForClient } from "./waitForClient";
+
+// Module scope on purpose: it outlives disable → enable, so a new load's first run waits for the
+// previous load's aborted run (an add may still be in flight) before reading the Archive.
+const runGate = createRunGate(realTimer, PREVIOUS_RUN_WAIT_MS);
 
 const localStorageAdapter: StoragePort = {
   get(key) {
@@ -58,6 +63,7 @@ export async function load(ctx: ModuleRuntimeContext): Promise<void> {
         { library, playlists, store, notices, log, now: () => Date.now(), batchSize: ADD_BATCH_SIZE },
         signal,
       ),
+    gate: runGate,
     timer: realTimer,
     intervalMs: RECHECK_INTERVAL_MS,
     log,

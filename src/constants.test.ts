@@ -3,6 +3,7 @@ import {
   ADD_BATCH_SIZE,
   ARCHIVE_NAME,
   DISCOVER_WEEKLY_NAME,
+  PREVIOUS_RUN_WAIT_MS,
   READY_TIMEOUT_MS,
   RECHECK_INTERVAL_MS,
   STORAGE_PREFIX,
@@ -18,4 +19,8 @@ it("pins the spec values", () => {
 
 it("keeps the add batch at 100, since no per-call limit was found up to 500", () => {
   expect(ADD_BATCH_SIZE).toBe(100);
+});
+
+it("caps the wait for a previous load's run at 10 s", () => {
+  expect(PREVIOUS_RUN_WAIT_MS).toBe(10_000);
 });

@@ -14,7 +14,8 @@ vi.mock("./platform/playlist", () => ({
 import { load } from "./index";
 import { registerSettingsSection, type SettingsDeps } from "./ui/settingsSection";
 import { createLibrary } from "./platform/library";
-import { READY_TIMEOUT_MS, RECHECK_INTERVAL_MS } from "./constants";
+import { createPlaylists } from "./platform/playlist";
+import { PREVIOUS_RUN_WAIT_MS, READY_TIMEOUT_MS, RECHECK_INTERVAL_MS } from "./constants";
 import { SOURCE_MISSING_NOTICE } from "./messages";
 
 type Platform = Record<string, unknown>;
@@ -63,6 +64,57 @@ const runs = (): number =>
     (sum, r) => sum + (r.value as { readRootlist: Mock }).readRootlist.mock.calls.length,
     0,
   );
+
+/** The n-th playlists adapter load() built (0-based). */
+const playlists = (n: number) =>
+  vi.mocked(createPlaylists).mock.results[n]!.value as { readItemUris: Mock; addTracks: Mock };
+
+function deferred() {
+  let resolve!: () => void;
+  const promise = new Promise<void>((res) => (resolve = res));
+  return { promise, resolve };
+}
+
+const DW = {
+  uri: "spotify:playlist:dw",
+  name: "Discover Weekly",
+  ownedBySpotify: true,
+  ownedByUser: false,
+  canEdit: false,
+  isOwnDiscoverWeekly: true,
+};
+const ARCHIVE = {
+  uri: "spotify:playlist:arc",
+  name: "Discover Weekly Archive",
+  ownedBySpotify: false,
+  ownedByUser: true,
+  canEdit: true,
+  isOwnDiscoverWeekly: null,
+};
+
+/** Two loads whose runs see a Discover Weekly with one song missing from the Archive; the first load's add hangs until released. */
+function stubAddInFlight() {
+  const add = deferred();
+  const library = () => ({
+    readRootlist: vi.fn(async () => ({ playlists: [DW, ARCHIVE], unavailableUris: [] })),
+    createPlaylist: vi.fn(),
+  });
+  const read = vi.fn(async (uri: string) => (uri === DW.uri ? ["spotify:track:a"] : []));
+  vi.mocked(createLibrary).mockReturnValueOnce(library()).mockReturnValueOnce(library());
+  vi.mocked(createPlaylists)
+    .mockReturnValueOnce({ readItemUris: read, addTracks: vi.fn(() => add.promise) })
+    .mockReturnValueOnce({ readItemUris: read, addTracks: vi.fn(async () => {}) });
+  return add;
+}
+
+/** Load, let the launch run reach its add, then unload while the add is in flight. */
+async function disableDuringAdd(): Promise<void> {
+  const first = ctx();
+  await load(first);
+  await vi.advanceTimersByTimeAsync(0);
+  expect(playlists(0).addTracks).toHaveBeenCalledTimes(1);
+  unload(first);
+}
 
 const settingsDeps = (n: number): SettingsDeps => vi.mocked(registerSettingsSection).mock.calls[n]![1];
 
@@ -157,6 +209,32 @@ describe("load", () => {
     expect(vi.getTimerCount()).toBe(1);
     expect(registerSettingsSection).toHaveBeenCalledTimes(2);
     expect(library(0).readRootlist).not.toHaveBeenCalled();
+    expect(library(1).readRootlist).toHaveBeenCalledTimes(1);
+  });
+
+  it("disable → enable during an add: the next launch run reads nothing until that add settles", async () => {
+    stubSpicetify(READY_PLATFORM());
+    const add = stubAddInFlight();
+    await disableDuringAdd();
+
+    await load(ctx());
+    await vi.advanceTimersByTimeAsync(PREVIOUS_RUN_WAIT_MS - 1);
+    expect(library(1).readRootlist).not.toHaveBeenCalled();
+
+    add.resolve();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(library(1).readRootlist).toHaveBeenCalledTimes(1);
+  });
+
+  it("disable → enable during an add that never settles: the next launch run starts at the cap", async () => {
+    stubSpicetify(READY_PLATFORM());
+    stubAddInFlight();
+    await disableDuringAdd();
+
+    await load(ctx());
+    await vi.advanceTimersByTimeAsync(PREVIOUS_RUN_WAIT_MS - 1);
+    expect(library(1).readRootlist).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
     expect(library(1).readRootlist).toHaveBeenCalledTimes(1);
   });
 

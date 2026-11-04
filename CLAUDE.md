@@ -44,7 +44,7 @@ Commit subjects start with a Conventional Commit prefix (`feat:`, `fix:`, `docs:
 
 ## Architecture
 
-The core (`archiveRun`, `resolve`, `scheduler`, `notices`, `storage`) is pure and receives ports by
+The core (`archiveRun`, `resolve`, `scheduler`, `runGate`, `notices`, `storage`) is pure and receives ports by
 injection. Adapters over `Spicetify.Platform` live in `src/platform/` (`library`, `playlist`);
 `src/index.ts` wires everything in `load(ctx)`, and `src/ui/` holds the Settings section and
 toasts.
@@ -64,6 +64,8 @@ Load-bearing; violating any is a defect. Rationale is in the spec.
   - During development the `discover-weekly-archive:archiveUri` storage key must point at the
     `DWA dev` playlist. Re-check it after any storage reset. Pointing it back is the user's step.
 - **Dedupe by track URI only** — never by name or artist.
+- **The run gate lives at module scope in `src/index.ts`,** not in `load()`: it must outlive
+  disable → enable so a new load's first run waits (capped) for the old load's in-flight add.
 - **Live-verified facts the adapters rely on** (details in the platform notes):
   - The edit flag on a Rootlist item is `canAdd`, not `canEditItems` (always false there).
   - The user's own Discover Weekly is told apart by `formatListData.attributes["madeFor.username"]`.

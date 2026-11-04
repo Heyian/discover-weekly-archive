@@ -161,7 +161,9 @@ is active is dropped. It is not queued, and the end of the active run does not s
 is released on every outcome.
 
 After dispose, a run still in flight issues no further add or create call, writes no storage and
-shows no notice. An add request already sent when dispose runs may still complete.
+shows no notice. An add request already sent when dispose runs may still complete. So that it is not
+added twice, every run first waits for the previous run, across disable → enable too, to settle,
+capped at `PREVIOUS_RUN_WAIT` (10 s), before it reads anything (ruled 2026-11-04).
 
 A "song already there" is decided by track URI only. Spotify sometimes relinks the same recording
 under a different URI, and that case is accepted: the song may be added twice.

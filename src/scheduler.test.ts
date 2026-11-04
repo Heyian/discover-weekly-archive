@@ -1,7 +1,10 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from "vitest";
 import { createScheduler, startLaunchRun } from "./scheduler";
 import { RECHECK_INTERVAL_MS } from "./constants";
+import { createRunGate, type RunGate } from "./runGate";
 import { realTimer } from "./timer";
+
+const SETTLE_CAP = 10_000;
 
 beforeEach(() => {
   vi.useFakeTimers();
@@ -20,9 +23,9 @@ function deferred<T = void>() {
   return { promise, resolve, reject };
 }
 
-function setup(run: (signal: AbortSignal) => Promise<unknown>) {
+function setup(run: (signal: AbortSignal) => Promise<unknown>, gate: RunGate = createRunGate(realTimer, SETTLE_CAP)) {
   const log = vi.fn();
-  const scheduler = createScheduler({ run, timer: realTimer, intervalMs: RECHECK_INTERVAL_MS, log });
+  const scheduler = createScheduler({ run, gate, timer: realTimer, intervalMs: RECHECK_INTERVAL_MS, log });
   return { scheduler, log };
 }
 
@@ -95,6 +98,42 @@ describe("createScheduler", () => {
 
     await vi.advanceTimersByTimeAsync(RECHECK_INTERVAL_MS * 2);
     expect(run).toHaveBeenCalledTimes(1);
+  });
+
+  it("a new scheduler's first run waits for an aborted run of the previous one to settle", async () => {
+    const gate = createRunGate(realTimer, SETTLE_CAP);
+    const addInFlight = deferred();
+    const first = setup(() => addInFlight.promise, gate);
+    first.scheduler.trigger();
+    first.scheduler.dispose();
+
+    const run = vi.fn(() => Promise.resolve());
+    const second = setup(run, gate);
+    expect(second.scheduler.trigger()).toBe(true);
+    expect(second.scheduler.isRunning()).toBe(true);
+    await vi.advanceTimersByTimeAsync(SETTLE_CAP - 1);
+    expect(run).not.toHaveBeenCalled();
+
+    addInFlight.resolve();
+    await vi.advanceTimersByTimeAsync(0);
+    expect(run).toHaveBeenCalledTimes(1);
+    expect(second.scheduler.isRunning()).toBe(false);
+    second.scheduler.dispose();
+  });
+
+  it("disposed while waiting for the previous run: the run never starts and no timer is left", async () => {
+    const gate = createRunGate(realTimer, SETTLE_CAP);
+    const first = setup(() => new Promise(() => {}), gate);
+    first.scheduler.trigger();
+    first.scheduler.dispose();
+
+    const run = vi.fn(() => Promise.resolve());
+    const second = setup(run, gate);
+    second.scheduler.trigger();
+    second.scheduler.dispose();
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.advanceTimersByTimeAsync(SETTLE_CAP);
+    expect(run).not.toHaveBeenCalled();
   });
 
   it("dispose is idempotent and later triggers do not start a run", () => {
