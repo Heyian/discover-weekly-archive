@@ -4,5 +4,5 @@ export const ARCHIVE_NAME = "Discover Weekly Archive";
 export const READY_TIMEOUT_MS = 10_000;
 export const RECHECK_INTERVAL_MS = 21_600_000;
 export const STORAGE_PREFIX = "discover-weekly-archive:";
-// Placeholder; Task 6 replaces it with the verified limit.
+// PlaylistAPI.add showed no per-call limit up to 500 (docs/spicetify-v3-platform.md); 100 by choice.
 export const ADD_BATCH_SIZE = 100;
