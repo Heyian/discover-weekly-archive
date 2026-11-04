@@ -13,3 +13,8 @@ export interface StoragePort {
   get(key: string): string | null;
   set(key: string, value: string): void;
 }
+
+export interface NotifyPort {
+  info(message: string): void;
+  error(message: string): void;
+}
