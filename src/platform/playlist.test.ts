@@ -52,6 +52,28 @@ describe("createPlaylists.readItemUris", () => {
     expect(platform.PlaylistAPI.getContents).toHaveBeenCalledTimes(1);
   });
 
+  it("pages by items received when items lack a uri, and terminates", async () => {
+    const mixed = [
+      ...Array.from({ length: 100 }, (): { uri?: unknown } => ({ uri: undefined })),
+      ...tracks(30),
+    ];
+    const platform = {
+      PlaylistAPI: {
+        getContents: vi.fn(async (_u: string, o: Opts) => ({
+          items: mixed.slice(o.offset, o.offset + o.limit),
+          totalLength: mixed.length,
+        })),
+        add: vi.fn().mockResolvedValue(undefined),
+      },
+    };
+    const out = await createPlaylists(platform).readItemUris("p");
+    expect(out).toEqual(tracks(30).map((t) => t.uri));
+    expect(platform.PlaylistAPI.getContents.mock.calls.map((c) => c[1])).toEqual([
+      { offset: 0, limit: 100 },
+      { offset: 100, limit: 100 },
+    ]);
+  });
+
   it("returns unplayable items too", async () => {
     const platform = fakePlatform([
       { uri: "spotify:track:a", isPlayable: false },

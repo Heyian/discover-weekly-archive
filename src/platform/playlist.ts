@@ -18,14 +18,16 @@ export function createPlaylists(platform?: PlaylistPlatform): PlaylistPort {
   return {
     async readItemUris(uri) {
       const out: string[] = [];
+      let offset = 0;
       for (;;) {
-        const page = await api().getContents(uri, { offset: out.length, limit: PAGE_SIZE });
+        const page = await api().getContents(uri, { offset, limit: PAGE_SIZE });
         const items = page?.items ?? [];
         for (const item of items) {
           if (typeof item?.uri === "string") out.push(item.uri);
         }
+        offset += items.length;
         const total = page?.totalLength;
-        if (items.length < PAGE_SIZE || (typeof total === "number" && out.length >= total)) break;
+        if (items.length < PAGE_SIZE || (typeof total === "number" && offset >= total)) break;
       }
       return out;
     },
