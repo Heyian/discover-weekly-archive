@@ -1,0 +1,28 @@
+import { readFileSync } from "node:fs";
+import { describe, expect, it } from "vitest";
+
+const read = (path: string) => JSON.parse(readFileSync(path, "utf8"));
+
+describe("release-please", () => {
+  it("config bumps src/metadata.json and stays on 0.x for breaking changes", () => {
+    const config = read("release-please-config.json");
+    const root = config.packages["."];
+    expect(root["release-type"]).toBe("node");
+    expect(root["bump-minor-pre-major"]).toBe(true);
+    expect(root["extra-files"]).toEqual([{ type: "json", path: "src/metadata.json", jsonpath: "$.version" }]);
+    expect(config["bootstrap-sha"]).toMatch(/^[0-9a-f]{40}$/);
+  });
+
+  // The publish job checks the tag is exactly v<version>; release-please's default tag is
+  // <component>-v<version>.
+  it("config tags releases as v<version>", () => {
+    expect(read("release-please-config.json").packages["."]["include-component-in-tag"]).toBe(false);
+  });
+
+  // The manifest holds the last released version, so its value changes with every release PR.
+  it("manifest tracks the root package with a semver version", () => {
+    const manifest = read(".release-please-manifest.json");
+    expect(Object.keys(manifest)).toEqual(["."]);
+    expect(manifest["."]).toMatch(/^\d+\.\d+\.\d+$/);
+  });
+});
