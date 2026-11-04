@@ -107,6 +107,32 @@ describe("runArchive", () => {
     expect(r).toEqual({ at: 1234, outcome: "added", addedCount: 0 });
   });
 
+  it("AC4: non-track items in Source or Archive are neither added nor counted", async () => {
+    const local = "spotify:local:x";
+    const ep = "spotify:episode:E";
+    const s = setup({
+      list: [dw(), arch()],
+      contents: { [SRC]: [local, t("A"), ep, t("B")], [ARC]: [local, ep, t("B")] },
+    });
+    const r = await runArchive(s.deps, live());
+    expect(s.adds).toEqual([{ uri: ARC, tracks: [t("A")] }]);
+    expect(r?.addedCount).toBe(1);
+  });
+
+  it("AC36: a saved Source is used by the next run; clearing it returns to Automatic", async () => {
+    const mine = "spotify:playlist:mine";
+    const s = setup({
+      list: [dw(), arch(), dw({ uri: mine, name: "Mine", ownedBySpotify: false, ownedByUser: true })],
+      contents: { [SRC]: [t("A")], [mine]: [t("M")], [ARC]: [] },
+    });
+    s.store.setSourceUri(mine);
+    await runArchive(s.deps, live());
+    expect(s.adds.at(-1)).toEqual({ uri: ARC, tracks: [t("M")] });
+    s.store.setSourceUri("");
+    await runArchive(s.deps, live());
+    expect(s.adds.at(-1)).toEqual({ uri: ARC, tracks: [t("A")] });
+  });
+
   it("AC7: splits adds into batches in order", async () => {
     const s = setup({
       list: [dw(), arch()],
