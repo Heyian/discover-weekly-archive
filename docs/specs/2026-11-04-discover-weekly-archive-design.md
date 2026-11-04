@@ -557,8 +557,9 @@ In order. The agent does none of these.
 5. **Merge the release PR** `chore(main): release 0.1.0`. The publish job attaches the zip and prints
    the store entry.
 6. **Clean-install check.** On a Spicetify v3 setup that has never had this module, run
-   `spicetify pkg install discover-weekly-archive <release zip URL>`, then
-   `spicetify pkg enable discover-weekly-archive` and `spicetify apply`. Confirm that an Archive run
+   `spicetify pkg install discover-weekly-archive@<version> <release zip URL>`, then
+   `spicetify pkg enable discover-weekly-archive@<version>` and `spicetify apply` (corrected
+   2026-11-04: with a URL, and for `enable`, the CLI requires `module@version`). Confirm that an Archive run
    happens and that the Settings section appears.
 7. **Open the store PR by hand.** In your `spicetify/modules` fork, add
    `vault/discover-weekly-archive.json` with the entry from step 5, and open

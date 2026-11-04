@@ -105,6 +105,13 @@ Checked 2026-11-04 — CLI 3.0.0-rc.3, kit 0.4.4.
 - **Declare neither `tags` nor `kind`.** This repo keeps the track-playlist-preview rule. Kit 0.4.4's
   `vault-metadata.js` (`kindOfMeta`) now derives a store `kind` from `kind` or legacy `tags`; the
   publish action and validator were not re-checked end to end, so neither field is declared.
+- **`pkg` IDs.** `pkg install <id>` (vault) takes a bare module ID and resolves the version.
+  `pkg install <id> <url>`, `pkg enable` and `pkg delete` require `module@version`
+  (`StoreIdentifier::parse`); a bare ID fails with `invalid store id … expected module@version`.
+  The release lands in `store/<id>/<version>/`; `enable` links `modules/<id>` to it.
+- **A dev build hides the store copy.** `bun run build` writes a real folder at `modules/<id>`.
+  `pkg list` then reports that folder's version (e.g. `0.0.0`), and `enable <id>@<version>` only
+  took effect after the folder was moved away (observed 2026-11-04 on 0.1.0).
 - **The `spicetify-module.json` sidecar is only a marker.** The CLI skips it when staging
   (`SKIPPED_FILES`).
 - **Kit 0.4.4** (no breaking change found against 0.3.1; there is no changelog, so this comes from
@@ -125,7 +132,8 @@ Checked 2026-11-04 — CLI 3.0.0-rc.3, kit 0.4.4.
   - Still requires Node ≥ 22.6. Under Bun, sass fails with `Invalid protobuf`.
 
 Source: `~/DEV/spicetify/cli` (workspace version `3.0.0-rc.3`)
-`rust/crates/spicetify/src/module/stage.rs` (l.24, l.39, l.443);
+`rust/crates/spicetify/src/module/stage.rs` (l.24, l.39, l.443), `module/vault.rs` (l.31-52),
+`module/mod.rs` (l.277-305), `commands/pkg.rs` (l.525-551);
 `node_modules/@spicetify/kit/dist/{build,check,vault-metadata}.js` and `README.md`; a
 `bun run build:local` run.
 

@@ -33,19 +33,26 @@ Install **Discover Weekly Archive** from the in-client store, or from a terminal
 
 ```bash
 spicetify pkg install discover-weekly-archive
-spicetify pkg enable discover-weekly-archive
+spicetify pkg enable discover-weekly-archive@<version>   # the version install printed
 spicetify apply          # restarts Spotify
 ```
 
+`pkg enable` always takes `module@version`; `spicetify pkg list` shows what is installed.
+
 ### From a release zip
 
-Install a release's zip by URL. This form skips checksum verification.
+Install a release's zip by URL. This form skips checksum verification. With a URL, both commands
+take `module@version`:
 
 ```bash
-spicetify pkg install discover-weekly-archive https://github.com/Heyian/discover-weekly-archive/releases/download/v<version>/discover-weekly-archive@<version>.zip
-spicetify pkg enable discover-weekly-archive
+spicetify pkg install discover-weekly-archive@<version> https://github.com/Heyian/discover-weekly-archive/releases/download/v<version>/discover-weekly-archive@<version>.zip
+spicetify pkg enable discover-weekly-archive@<version>
 spicetify apply
 ```
+
+If you built from source before, `modules/discover-weekly-archive` in your Spicetify config folder
+is a plain folder that hides the installed release (`pkg list` shows `0.0.0`). Move it out of the
+way, then run `pkg enable` again.
 
 ### From source
 
